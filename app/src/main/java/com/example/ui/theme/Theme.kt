@@ -25,16 +25,16 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = GreenPrimary,
-    secondary = BlueSecondary,
-    tertiary = CyberOrange,
-    background = LightBg,
+    primary = HighDensityAccent,
+    secondary = HighDensityButtonContainerBg,
+    tertiary = HighDensityButtonContainerText,
+    background = HighDensityBg,
     surface = LightSurface,
-    onBackground = Color(0xFF0F172A),
-    onSurface = Color(0xFF1E293B),
-    surfaceVariant = LightSurfaceVariant,
-    onSurfaceVariant = Color(0xFF64748B),
-    error = CyberRed
+    onBackground = HighDensityTextPrimary,
+    onSurface = HighDensityTextPrimary,
+    surfaceVariant = HighDensityLogBg,
+    onSurfaceVariant = HighDensityTextSecondary,
+    error = Color(0xFFEF4444)
 )
 
 @Composable

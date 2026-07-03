@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -144,8 +145,8 @@ fun BmsTelemetryChart(
                 .fillMaxWidth()
                 .height(180.dp)
                 .background(
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-                    shape = MaterialTheme.shapes.medium
+                    Color(0xFFF1F0F4),
+                    shape = RoundedCornerShape(16.dp)
                 )
                 .pointerInput(sortedLogs) {
                     detectTapGestures(
