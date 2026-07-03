@@ -1,0 +1,8 @@
+{
+  "name": "BMS Manager",
+  "description": "An open-source Battery Management System (BMS) application for lithium-ion batteries. Includes real-time voltage monitoring, temperature alerts, charge/discharge switches, custom SOC calculation, Bluetooth remote communication, historic logging, and custom battery chemistry configurations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
