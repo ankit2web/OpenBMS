@@ -145,7 +145,7 @@ fun BmsTelemetryChart(
                 .fillMaxWidth()
                 .height(180.dp)
                 .background(
-                    Color(0xFFF1F0F4),
+                    MaterialTheme.colorScheme.surfaceVariant,
                     shape = RoundedCornerShape(16.dp)
                 )
                 .pointerInput(sortedLogs) {

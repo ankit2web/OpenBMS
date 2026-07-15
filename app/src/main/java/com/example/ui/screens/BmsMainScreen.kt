@@ -105,6 +105,30 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                     }
                 },
                 actions = {
+                    val currentThemeMode = settingsState?.themeMode ?: "System"
+                    val (themeIcon, nextModeLabel) = when (currentThemeMode) {
+                        "Light" -> Pair(Icons.Default.LightMode, "Switch to Dark")
+                        "Dark" -> Pair(Icons.Default.DarkMode, "Switch to System Auto")
+                        else -> Pair(Icons.Default.BrightnessAuto, "Switch to Light")
+                    }
+                    IconButton(
+                        onClick = {
+                            val nextMode = when (currentThemeMode) {
+                                "System" -> "Light"
+                                "Light" -> "Dark"
+                                else -> "System"
+                            }
+                            viewModel.updateTheme(nextMode)
+                        },
+                        modifier = Modifier.testTag("theme_toggle_button")
+                    ) {
+                        Icon(
+                            imageVector = themeIcon,
+                            contentDescription = nextModeLabel,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     if (connectionState == BmsConnectionState.CONNECTED) {
                         IconButton(onClick = { viewModel.disconnect() }) {
                             Icon(
@@ -116,19 +140,21 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         bottomBar = {
-            val activeColor = Color(0xFF4259A7)
-            val inactiveColor = Color(0xFF44474E)
             NavigationBar(
-                containerColor = Color.White,
-                tonalElevation = 0.dp,
-                modifier = Modifier.border(width = 1.dp, color = Color(0xFFDDE1FF), shape = RectangleShape),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                modifier = Modifier.border(width = 1.dp, color = MaterialTheme.colorScheme.outlineVariant, shape = RectangleShape),
                 windowInsets = WindowInsets.navigationBars
             ) {
+                val activeColor = MaterialTheme.colorScheme.primary
+                val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant
+                val indicatorBg = MaterialTheme.colorScheme.secondaryContainer
+
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
@@ -139,7 +165,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                         selectedTextColor = activeColor,
                         unselectedIconColor = inactiveColor,
                         unselectedTextColor = inactiveColor,
-                        indicatorColor = Color(0xFFDDE1FF)
+                        indicatorColor = indicatorBg
                     )
                 )
                 NavigationBarItem(
@@ -152,7 +178,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                         selectedTextColor = activeColor,
                         unselectedIconColor = inactiveColor,
                         unselectedTextColor = inactiveColor,
-                        indicatorColor = Color(0xFFDDE1FF)
+                        indicatorColor = indicatorBg
                     )
                 )
                 NavigationBarItem(
@@ -165,7 +191,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                         selectedTextColor = activeColor,
                         unselectedIconColor = inactiveColor,
                         unselectedTextColor = inactiveColor,
-                        indicatorColor = Color(0xFFDDE1FF)
+                        indicatorColor = indicatorBg
                     )
                 )
                 NavigationBarItem(
@@ -178,7 +204,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                         selectedTextColor = activeColor,
                         unselectedIconColor = inactiveColor,
                         unselectedTextColor = inactiveColor,
-                        indicatorColor = Color(0xFFDDE1FF)
+                        indicatorColor = indicatorBg
                     )
                 )
                 NavigationBarItem(
@@ -191,7 +217,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                         selectedTextColor = activeColor,
                         unselectedIconColor = inactiveColor,
                         unselectedTextColor = inactiveColor,
-                        indicatorColor = Color(0xFFDDE1FF)
+                        indicatorColor = indicatorBg
                     )
                 )
             }
@@ -403,16 +429,16 @@ fun BmsDashboardTab(
 @Composable
 fun StateOfChargeCard(telemetry: BmsTelemetry) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE1E2EC)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(elevation = 1.dp, shape = RoundedCornerShape(24.dp))
+            .shadow(elevation = 2.dp, shape = RoundedCornerShape(24.dp))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -422,19 +448,19 @@ fun StateOfChargeCard(telemetry: BmsTelemetry) {
                 Text(
                     text = "State of Charge",
                     style = MaterialTheme.typography.labelMedium.copy(
-                        color = Color(0xFF44474E),
-                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
                     )
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Text(
                         text = "${telemetry.soc.toInt()}",
                         style = MaterialTheme.typography.displayMedium.copy(
-                            color = Color(0xFF1B1B1F),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = (-1).sp
                         ),
@@ -443,7 +469,7 @@ fun StateOfChargeCard(telemetry: BmsTelemetry) {
                     Text(
                         text = "%",
                         style = MaterialTheme.typography.titleLarge.copy(
-                            color = Color(0xFF44474E),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.9f),
                             fontWeight = FontWeight.Medium
                         ),
                         modifier = Modifier
@@ -453,28 +479,31 @@ fun StateOfChargeCard(telemetry: BmsTelemetry) {
                 }
             }
 
-            // Circular progress gauge matching HTML exactly
+            // Circular progress gauge using theme tokens
             Box(
                 modifier = Modifier.size(80.dp),
                 contentAlignment = Alignment.Center
             ) {
+                val bgCircleColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+                val arcColor = MaterialTheme.colorScheme.onPrimaryContainer
+
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val radius = size.minDimension / 2.0f
                     val strokeWidth = 8.dp.toPx()
                     val centerOffset = Offset(size.width / 2f, size.height / 2f)
 
-                    // Draw Background Circle (F1F0F4)
+                    // Draw Background Circle
                     drawCircle(
-                        color = Color(0xFFF1F0F4),
+                        color = bgCircleColor,
                         radius = radius - strokeWidth / 2f,
                         center = centerOffset,
                         style = Stroke(width = strokeWidth)
                     )
 
-                    // Draw Colored SOC Arc (4259A7)
+                    // Draw Colored SOC Arc
                     val sweepAngle = (telemetry.soc / 100f) * 360f
                     drawArc(
-                        color = Color(0xFF4259A7),
+                        color = arcColor,
                         startAngle = -90f,
                         sweepAngle = sweepAngle,
                         useCenter = false,
@@ -486,8 +515,8 @@ fun StateOfChargeCard(telemetry: BmsTelemetry) {
                 Icon(
                     imageVector = Icons.Default.Bolt,
                     contentDescription = "Charging bolt status",
-                    tint = Color(0xFF4259A7),
-                    modifier = Modifier.size(30.dp)
+                    tint = arcColor,
+                    modifier = Modifier.size(32.dp)
                 )
             }
         }
@@ -499,15 +528,15 @@ fun MetricGridCard(
     label: String,
     value: String,
     subtext: String,
-    subtextColor: Color = Color(0xFF44474E),
+    subtextColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(16.dp),
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -516,7 +545,7 @@ fun MetricGridCard(
             Text(
                 text = label.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = Color(0xFF44474E),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
                 )
@@ -524,7 +553,7 @@ fun MetricGridCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(
-                    color = Color(0xFF1B1B1F),
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 18.sp
                 )
@@ -532,7 +561,7 @@ fun MetricGridCard(
             Text(
                 text = subtext,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = subtextColor,
+                    color = subtextColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
                     fontSize = 10.sp
                 )
@@ -548,11 +577,11 @@ fun PowerControlCard(
     viewModel: BmsViewModel
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(24.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -565,7 +594,7 @@ fun PowerControlCard(
                 Text(
                     text = "Power Control",
                     style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color(0xFF1B1B1F),
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp
                     )
@@ -575,13 +604,13 @@ fun PowerControlCard(
                 val cellCount = settings?.cellCount ?: 8
                 Box(
                     modifier = Modifier
-                        .background(Color(0xFFF1F0F4), shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(4.dp))
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "$chemistry (${cellCount}S)",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color(0xFF1B1B1F),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
                         )
@@ -599,7 +628,7 @@ fun PowerControlCard(
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color(0xFFFDFBFF), shape = RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -607,7 +636,7 @@ fun PowerControlCard(
                     Text(
                         text = "Charge",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF1B1B1F),
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )
@@ -617,9 +646,9 @@ fun PowerControlCard(
                         onCheckedChange = { viewModel.toggleChargeSwitch(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF4259A7),
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color(0xFFF1F0F4)
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         modifier = Modifier.testTag("charge_switch")
                     )
@@ -629,7 +658,7 @@ fun PowerControlCard(
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .background(Color(0xFFFDFBFF), shape = RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -637,7 +666,7 @@ fun PowerControlCard(
                     Text(
                         text = "Discharge",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color(0xFF1B1B1F),
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )
@@ -647,9 +676,9 @@ fun PowerControlCard(
                         onCheckedChange = { viewModel.toggleDischargeSwitch(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF4259A7),
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color(0xFFF1F0F4)
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         modifier = Modifier.testTag("discharge_switch")
                     )
@@ -665,7 +694,7 @@ fun SystemLogsCard(
     onViewDetailedHistory: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F0F4)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -680,7 +709,7 @@ fun SystemLogsCard(
                 Text(
                     text = "SYSTEM LOGS",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = Color(0xFF44474E),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp
                     )
@@ -693,9 +722,9 @@ fun SystemLogsCard(
                     Text(
                         text = "View Detailed History",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color(0xFF4259A7),
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 10.sp
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
                         )
                     )
                 }
@@ -714,7 +743,7 @@ fun SystemLogsCard(
                     Text(
                         text = "No system logs available yet.",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF44474E),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp
                         )
@@ -730,9 +759,9 @@ fun SystemLogsCard(
                             else -> "BMS idle - Volt: ${String.format("%.1f", log.voltage)}V"
                         }
                         val logColor = when {
-                            log.current > 0.1f -> Color(0xFF16A34A)
-                            log.current < -0.1f -> Color(0xFFDC2626)
-                            else -> Color(0xFF1B1B1F)
+                            log.current > 0.1f -> CyberGreen
+                            log.current < -0.1f -> CyberRed
+                            else -> MaterialTheme.colorScheme.onSurface
                         }
 
                         Column {
@@ -744,7 +773,7 @@ fun SystemLogsCard(
                                 Text(
                                     text = timeStr,
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = Color(0xFF44474E),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 12.sp
                                     )
@@ -760,7 +789,7 @@ fun SystemLogsCard(
                                 )
                             }
                             HorizontalDivider(
-                                color = Color(0xFFC7C6D0),
+                                color = MaterialTheme.colorScheme.outlineVariant,
                                 thickness = 0.5.dp,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
@@ -810,11 +839,11 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
     ) {
         // Cell Overview Analytics
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
         ) {
             Row(
                 modifier = Modifier
@@ -823,11 +852,11 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Text("HIGHEST CELL", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("HIGHEST CELL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         "Cell #$maxCellIndex",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
                     Text(
                         "${String.format("%.3f", maxCell)}V",
@@ -841,15 +870,15 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
                     modifier = Modifier
                         .width(1.dp)
                         .height(50.dp)
-                        .background(Color.Gray.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.outlineVariant)
                 )
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Text("LOWEST CELL", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("LOWEST CELL", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         "Cell #$minCellIndex",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                     )
                     Text(
                         "${String.format("%.3f", minCell)}V",
@@ -863,11 +892,11 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
                     modifier = Modifier
                         .width(1.dp)
                         .height(50.dp)
-                        .background(Color.Gray.copy(alpha = 0.3f))
+                        .background(MaterialTheme.colorScheme.outlineVariant)
                 )
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Text("CELL DELTA", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text("CELL DELTA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         if (delta > 0.05f) "High Imbalance" else "Balanced",
                         style = MaterialTheme.typography.bodySmall,
@@ -887,7 +916,7 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
             text = "INDIVIDUAL CELL VOLTAGES",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         // Cell Voltage bar charts
@@ -902,11 +931,11 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
                 val fillFraction = ((volts - minVoltageThreshold) / span).coerceIn(0f, 1f)
 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(12.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                 ) {
                     Row(
                         modifier = Modifier
@@ -919,6 +948,7 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
                             text = "Cell #${idx + 1}",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.width(55.dp)
                         )
 
@@ -927,7 +957,7 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(16.dp)
-                                .background(Color.Gray.copy(alpha = 0.1f), shape = MaterialTheme.shapes.extraSmall)
+                                .background(MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.extraSmall)
                         ) {
                             val barColor = when {
                                 isHighest -> CyberGreen
@@ -996,7 +1026,7 @@ fun BmsBluetoothTab(
         Text(
             text = "BLUETOOTH CONNECTIVITY",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
@@ -1004,11 +1034,11 @@ fun BmsBluetoothTab(
 
         // Scanning Card Controls
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -1017,7 +1047,7 @@ fun BmsBluetoothTab(
                 Text(
                     text = "Search for Hardware BMS",
                     style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color(0xFF1B1B1F),
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -1025,14 +1055,14 @@ fun BmsBluetoothTab(
                 Text(
                     text = "Ensure your lithium pack's BLE dongle is powered on and within 10 meters of your device.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF44474E)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 if (connectionState == BmsConnectionState.SCANNING) {
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xFF4259A7),
-                        trackColor = Color(0xFFF1F0F4)
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
 
@@ -1043,7 +1073,7 @@ fun BmsBluetoothTab(
                     if (connectionState == BmsConnectionState.SCANNING) {
                         Button(
                             onClick = { viewModel.stopScan() },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.weight(1f)
                         ) {
@@ -1053,8 +1083,8 @@ fun BmsBluetoothTab(
                         Button(
                             onClick = { viewModel.startScan() },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF4259A7),
-                                contentColor = Color.White
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
                             ),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier
@@ -1074,7 +1104,7 @@ fun BmsBluetoothTab(
         Text(
             text = "AVAILABLE HARDWARE",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
@@ -1089,7 +1119,7 @@ fun BmsBluetoothTab(
             ) {
                 Text(
                     "No BLE signals found. Click Scan to search.",
-                    color = Color(0xFF44474E),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -1101,12 +1131,12 @@ fun BmsBluetoothTab(
                     val isDemo = dev.address == "00:11:22:33:44:FF"
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isDemo) Color(0xFFF1F0F4) else Color.White
+                            containerColor = if (isDemo) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(12.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                     ) {
                         Row(
                             modifier = Modifier
@@ -1122,19 +1152,19 @@ fun BmsBluetoothTab(
                                 Icon(
                                     imageVector = if (isDemo) Icons.Default.DeveloperBoard else Icons.Default.Bluetooth,
                                     contentDescription = "Device info",
-                                    tint = if (isDemo) Color(0xFF4259A7) else Color(0xFF2563EB)
+                                    tint = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
                                 )
                                 Column {
                                     Text(
                                         text = dev.name,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1B1B1F),
+                                        color = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
                                         fontSize = 14.sp
                                     )
                                     Text(
                                         text = dev.address,
                                         fontSize = 11.sp,
-                                        color = Color(0xFF44474E)
+                                        color = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -1146,13 +1176,13 @@ fun BmsBluetoothTab(
                                 Text(
                                     text = "${dev.rssi} dBm",
                                     fontSize = 11.sp,
-                                    color = Color(0xFF44474E)
+                                    color = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Button(
                                     onClick = { viewModel.connectDevice(dev.address) },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isDemo) Color(0xFF4259A7) else Color(0xFFDDE1FF),
-                                        contentColor = if (isDemo) Color.White else Color(0xFF001453)
+                                        containerColor = if (isDemo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = if (isDemo) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
                                     ),
                                     shape = RoundedCornerShape(20.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
@@ -1173,18 +1203,18 @@ fun BmsBluetoothTab(
         Text(
             text = "DEMO PHYSICS CONTROL BENCH",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
         )
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -1193,7 +1223,7 @@ fun BmsBluetoothTab(
                 Text(
                     text = "Test and Simulate BMS Alarms Offline",
                     style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color(0xFF4259A7),
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -1201,7 +1231,7 @@ fun BmsBluetoothTab(
                 Text(
                     text = "If you are connected to the Demo Simulator BMS, these switches simulate dynamic environment elements to prove the safety and alerting capabilities of the app.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF44474E)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Row(
@@ -1210,8 +1240,8 @@ fun BmsBluetoothTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Connect 120V Grid Charger", fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1F), fontSize = 14.sp)
-                        Text("Plugs in simulated 25A charger", fontSize = 11.sp, color = Color(0xFF44474E))
+                        Text("Connect 120V Grid Charger", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        Text("Plugs in simulated 25A charger", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(
                         checked = isSimChargerOn,
@@ -1221,15 +1251,15 @@ fun BmsBluetoothTab(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF4259A7),
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color(0xFFF1F0F4)
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         modifier = Modifier.testTag("simulate_charger_switch")
                     )
                 }
 
-                HorizontalDivider(color = Color(0xFFC7C6D0))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1237,8 +1267,8 @@ fun BmsBluetoothTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Engage High Current Inverter Load", fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1F), fontSize = 14.sp)
-                        Text("Simulates 45A discharging load", fontSize = 11.sp, color = Color(0xFF44474E))
+                        Text("Engage High Current Inverter Load", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
+                        Text("Simulates 45A discharging load", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(
                         checked = isSimLoadOn,
@@ -1248,17 +1278,17 @@ fun BmsBluetoothTab(
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF4259A7),
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color(0xFFF1F0F4)
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         modifier = Modifier.testTag("simulate_load_switch")
                     )
                 }
 
-                HorizontalDivider(color = Color(0xFFC7C6D0))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                Text("Instant Protection Triggers", fontWeight = FontWeight.Medium, fontSize = 13.sp, color = Color(0xFF1B1B1F))
+                Text("Instant Protection Triggers", fontWeight = FontWeight.Medium, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1266,8 +1296,8 @@ fun BmsBluetoothTab(
                 ) {
                     OutlinedButton(
                         onClick = { viewModel.triggerSimulatedCellImbalance() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4259A7)),
-                        border = BorderStroke(1.dp, Color(0xFFC7C6D0)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
@@ -1276,8 +1306,8 @@ fun BmsBluetoothTab(
 
                     OutlinedButton(
                         onClick = { viewModel.triggerSimulatedHighTemp() },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF4259A7)),
-                        border = BorderStroke(1.dp, Color(0xFFC7C6D0)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
@@ -1318,7 +1348,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
         Text(
             text = "BATTERY PROFILE CALIBRATION",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
@@ -1326,11 +1356,11 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
 
         // Chemistry configuration Selectors
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -1339,7 +1369,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                 Text(
                     text = "Select Chemistry Profile",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B1B1F),
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp
                 )
 
@@ -1353,8 +1383,8 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         Button(
                             onClick = { selectedChemistry = profile },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSelected) Color(0xFF4259A7) else Color(0xFFF1F0F4),
-                                contentColor = if (isSelected) Color.White else Color(0xFF44474E)
+                                containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
@@ -1375,7 +1405,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                     else -> "Manual Custom thresholds (modify as needed)"
                 }
 
-                Text(voltsText, fontSize = 11.sp, color = Color(0xFF4259A7), fontWeight = FontWeight.Bold)
+                Text(voltsText, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
 
                 OutlinedTextField(
                     value = inputCellCount,
@@ -1384,10 +1414,10 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF4259A7),
-                        unfocusedBorderColor = Color(0xFFC7C6D0),
-                        focusedLabelColor = Color(0xFF4259A7),
-                        unfocusedLabelColor = Color(0xFF44474E)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1401,10 +1431,10 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF4259A7),
-                        unfocusedBorderColor = Color(0xFFC7C6D0),
-                        focusedLabelColor = Color(0xFF4259A7),
-                        unfocusedLabelColor = Color(0xFF44474E)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1419,8 +1449,8 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         viewModel.updateChemistry(selectedChemistry, cells, capacity)
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4259A7),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
@@ -1436,18 +1466,18 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
         Text(
             text = "SAFETY LIMIT ALERT PARAMETERS",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
         )
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -1459,7 +1489,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("High Temperature Protection", fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1F), fontSize = 14.sp)
+                        Text("High Temperature Protection", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                         Text("${sliderMaxTemp.toInt()}°C", color = CyberRed, fontWeight = FontWeight.Bold)
                     }
                     Slider(
@@ -1467,14 +1497,14 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         onValueChange = { sliderMaxTemp = it },
                         valueRange = 35f..80f,
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF4259A7),
-                            activeTrackColor = Color(0xFF4259A7),
-                            inactiveTrackColor = Color(0xFFF1F0F4)
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
                 }
 
-                HorizontalDivider(color = Color(0xFFC7C6D0))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 // Min Temp
                 Column {
@@ -1482,7 +1512,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Low Temperature Charge Lock", fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1F), fontSize = 14.sp)
+                        Text("Low Temperature Charge Lock", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                         Text("${sliderMinTemp.toInt()}°C", color = CyberBlue, fontWeight = FontWeight.Bold)
                     }
                     Slider(
@@ -1490,14 +1520,14 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         onValueChange = { sliderMinTemp = it },
                         valueRange = -20f..15f,
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF4259A7),
-                            activeTrackColor = Color(0xFF4259A7),
-                            inactiveTrackColor = Color(0xFFF1F0F4)
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
                 }
 
-                HorizontalDivider(color = Color(0xFFC7C6D0))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 // Max safety current
                 Column {
@@ -1505,7 +1535,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Overcurrent Tripping Relay", fontWeight = FontWeight.Medium, color = Color(0xFF1B1B1F), fontSize = 14.sp)
+                        Text("Overcurrent Tripping Relay", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp)
                         Text("${sliderMaxCurrent.toInt()} A", color = CyberOrange, fontWeight = FontWeight.Bold)
                     }
                     Slider(
@@ -1513,9 +1543,9 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         onValueChange = { sliderMaxCurrent = it },
                         valueRange = 10f..150f,
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF4259A7),
-                            activeTrackColor = Color(0xFF4259A7),
-                            inactiveTrackColor = Color(0xFFF1F0F4)
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
                 }
@@ -1526,8 +1556,8 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4259A7),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(20.dp)
                 ) {
@@ -1540,18 +1570,18 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
         Text(
             text = "BMS HANDSHAKE PROTOCOL SECURITY",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
         )
 
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -1576,13 +1606,13 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                             Icon(
                                 imageVector = if (isEncrypted) Icons.Default.Lock else Icons.Default.LockOpen,
                                 contentDescription = "Encryption State",
-                                tint = if (isEncrypted) CyberGreen else Color.Gray,
+                                tint = if (isEncrypted) CyberGreen else MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "Encrypt BMS Telemetry",
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1B1B1F),
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 14.sp
                             )
                         }
@@ -1590,7 +1620,7 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         Text(
                             text = if (isEncrypted) "AES Handshake Active. Pack telemetry is locked upon connection." else "Unencrypted. Telemetry streams freely to anyone.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF44474E),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp
                         )
                     }
@@ -1604,9 +1634,9 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
-                            checkedTrackColor = Color(0xFF4259A7),
-                            uncheckedThumbColor = Color(0xFF44474E),
-                            uncheckedTrackColor = Color(0xFFF1F0F4)
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         modifier = Modifier.testTag("encrypt_bms_switch")
                     )
@@ -1631,6 +1661,12 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
                                     modifier = Modifier.fillMaxWidth().testTag("confirm_password_dialog_input")
                                 )
                                 if (confirmErrorMessage.isNotEmpty()) {
@@ -1651,24 +1687,24 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                                     }
                                 }
                             ) {
-                                Text("Confirm", fontWeight = FontWeight.Bold, color = Color(0xFF4259A7))
+                                Text("Confirm", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                         },
                         dismissButton = {
                             TextButton(onClick = { showConfirmDialog = false }) {
-                                Text("Cancel", color = Color.Gray)
+                                Text("Cancel", color = MaterialTheme.colorScheme.outline)
                             }
                         }
                     )
                 }
 
-                HorizontalDivider(color = Color(0xFFC7C6D0))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                 // Section: Change password
                 Text(
                     text = "Change Passcode",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B1B1F),
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 14.sp
                 )
 
@@ -1685,6 +1721,12 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         modifier = Modifier.fillMaxWidth().testTag("old_password_input")
                     )
 
@@ -1696,6 +1738,12 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         modifier = Modifier.fillMaxWidth().testTag("new_password_input")
                     )
 
@@ -1707,6 +1755,12 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
                         modifier = Modifier.fillMaxWidth().testTag("confirm_new_password_input")
                     )
 
@@ -1736,8 +1790,8 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4259A7),
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.fillMaxWidth().testTag("update_password_button")
@@ -1768,7 +1822,7 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
         Text(
             text = "HISTORICAL METRICS & CHARTS",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = Color(0xFF44474E),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp
             )
@@ -1793,9 +1847,9 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
                     onClick = { selectedMetric = met },
                     label = { Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFDDE1FF),
-                        selectedLabelColor = Color(0xFF001453),
-                        selectedLeadingIconColor = Color(0xFF001453)
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ),
                     modifier = Modifier.weight(1f)
                 )
@@ -1818,7 +1872,7 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
             Text(
                 text = "SQL DATABASE RECORDS (${logs.size}/200)",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = Color(0xFF44474E),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
                 )
@@ -1826,7 +1880,7 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
 
             TextButton(
                 onClick = { viewModel.clearHistory() },
-                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFDC2626))
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
             ) {
                 Icon(Icons.Default.DeleteForever, contentDescription = "Clear logs")
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1844,18 +1898,18 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
             ) {
                 Text(
                     text = "No saved logs in SQLite. Connect to simulation BMS to stream and save telemetry.",
-                    color = Color(0xFF44474E),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center
                 )
             }
         } else {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(16.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             ) {
                 Column(
                     modifier = Modifier
@@ -1880,7 +1934,7 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
                                 text = timeStr,
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color(0xFF44474E),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1.3f)
                             )
 
@@ -1901,12 +1955,12 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
                                     fontSize = 11.sp,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF1B1B1F),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     textAlign = TextAlign.Right
                                 )
                             }
                         }
-                        HorizontalDivider(color = Color(0xFFC7C6D0))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }

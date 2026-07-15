@@ -4,7 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.BmsViewModel
 import com.example.ui.BmsViewModelFactory
 import com.example.ui.screens.BmsMainScreen
@@ -22,7 +25,13 @@ class MainActivity : ComponentActivity() {
         )[BmsViewModel::class.java]
 
         setContent {
-            MyApplicationTheme {
+            val settingsState by viewModel.settingsState.collectAsStateWithLifecycle()
+            val isDarkTheme = when (settingsState?.themeMode) {
+                "Light" -> false
+                "Dark" -> true
+                else -> isSystemInDarkTheme()
+            }
+            MyApplicationTheme(darkTheme = isDarkTheme) {
                 BmsMainScreen(viewModel = viewModel)
             }
         }

@@ -141,6 +141,13 @@ class BmsViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateTheme(themeMode: String) {
+        viewModelScope.launch {
+            val currentSettings = repository.getSettings()
+            repository.updateSettings(currentSettings.copy(themeMode = themeMode))
+        }
+    }
+
     // Demo control panels
     fun setSimulatedCharger(connected: Boolean) {
         bluetoothManager.setChargerState(connected)
