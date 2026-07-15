@@ -15,5 +15,7 @@ data class BatterySettings(
     val dischargeSwitchOn: Boolean = true,
     val maxTempAlertThreshold: Float = 55.0f, // Temp alert threshold in °C
     val minTempAlertThreshold: Float = -5.0f, // Low temp alert threshold in °C
-    val maxCurrentAlertThreshold: Float = 80.0f // Max safety current threshold in A
+    val maxCurrentAlertThreshold: Float = 80.0f, // Max safety current threshold in A
+    val bmsPassword: String = "123456", // Default security password
+    val isBmsEncrypted: Boolean = false // AES-secured/password-protected encryption state
 )

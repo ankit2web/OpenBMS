@@ -203,12 +203,17 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            when (selectedTab) {
-                0 -> BmsDashboardTab(telemetry, settingsState, viewModel)
-                1 -> BmsCellsTab(telemetry, settingsState)
-                2 -> BmsBluetoothTab(connectionState, scannedDevices, viewModel)
-                3 -> BmsSetupTab(settingsState, viewModel)
-                4 -> BmsAnalyticsTab(historyLogs, viewModel)
+            val showLockScreen = connectionState == BmsConnectionState.CONNECTED && telemetry.isEncrypted && !telemetry.isAuthorized
+            if (showLockScreen) {
+                BmsPasscodeLockScreen(viewModel)
+            } else {
+                when (selectedTab) {
+                    0 -> BmsDashboardTab(telemetry, settingsState, viewModel)
+                    1 -> BmsCellsTab(telemetry, settingsState)
+                    2 -> BmsBluetoothTab(connectionState, scannedDevices, viewModel)
+                    3 -> BmsSetupTab(settingsState, viewModel)
+                    4 -> BmsAnalyticsTab(historyLogs, viewModel)
+                }
             }
         }
     }
@@ -1530,6 +1535,218 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                 }
             }
         }
+
+        // --- BMS SECURITY & ENCRYPTION ---
+        Text(
+            text = "BMS HANDSHAKE PROTOCOL SECURITY",
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = Color(0xFF44474E),
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp
+            )
+        )
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Color(0xFFC7C6D0), RoundedCornerShape(24.dp))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Section: Encrypt/Decrypt BMS
+                var showConfirmDialog by remember { mutableStateOf(false) }
+                var confirmPassword by remember { mutableStateOf("") }
+                var confirmErrorMessage by remember { mutableStateOf("") }
+                var successMessage by remember { mutableStateOf("") }
+                var generalErrorMessage by remember { mutableStateOf("") }
+
+                val isEncrypted = settings?.isBmsEncrypted ?: false
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(
+                                imageVector = if (isEncrypted) Icons.Default.Lock else Icons.Default.LockOpen,
+                                contentDescription = "Encryption State",
+                                tint = if (isEncrypted) CyberGreen else Color.Gray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Encrypt BMS Telemetry",
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1B1B1F),
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (isEncrypted) "AES Handshake Active. Pack telemetry is locked upon connection." else "Unencrypted. Telemetry streams freely to anyone.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF44474E),
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Switch(
+                        checked = isEncrypted,
+                        onCheckedChange = {
+                            confirmPassword = ""
+                            confirmErrorMessage = ""
+                            showConfirmDialog = true
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF4259A7),
+                            uncheckedThumbColor = Color(0xFF44474E),
+                            uncheckedTrackColor = Color(0xFFF1F0F4)
+                        ),
+                        modifier = Modifier.testTag("encrypt_bms_switch")
+                    )
+                }
+
+                if (showConfirmDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showConfirmDialog = false },
+                        title = { Text(if (isEncrypted) "Decrypt BMS" else "Encrypt BMS", fontWeight = FontWeight.Bold) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    if (isEncrypted) "Enter your current security password to disable encryption on this BMS."
+                                    else "Enter your current security password to activate high-security encryption on this BMS.",
+                                    fontSize = 13.sp
+                                )
+                                OutlinedTextField(
+                                    value = confirmPassword,
+                                    onValueChange = { confirmPassword = it; confirmErrorMessage = "" },
+                                    label = { Text("Confirm Password") },
+                                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth().testTag("confirm_password_dialog_input")
+                                )
+                                if (confirmErrorMessage.isNotEmpty()) {
+                                    Text(confirmErrorMessage, color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    viewModel.toggleBmsEncryption(!isEncrypted, confirmPassword) { success, msg ->
+                                        if (success) {
+                                            successMessage = msg
+                                            showConfirmDialog = false
+                                        } else {
+                                            confirmErrorMessage = msg
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("Confirm", fontWeight = FontWeight.Bold, color = Color(0xFF4259A7))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showConfirmDialog = false }) {
+                                Text("Cancel", color = Color.Gray)
+                            }
+                        }
+                    )
+                }
+
+                HorizontalDivider(color = Color(0xFFC7C6D0))
+
+                // Section: Change password
+                Text(
+                    text = "Change Passcode",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1B1B1F),
+                    fontSize = 14.sp
+                )
+
+                var oldPasswordInput by remember { mutableStateOf("") }
+                var newPasswordInput by remember { mutableStateOf("") }
+                var confirmNewPasswordInput by remember { mutableStateOf("") }
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = oldPasswordInput,
+                        onValueChange = { oldPasswordInput = it; generalErrorMessage = ""; successMessage = "" },
+                        label = { Text("Current Password") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("old_password_input")
+                    )
+
+                    OutlinedTextField(
+                        value = newPasswordInput,
+                        onValueChange = { newPasswordInput = it; generalErrorMessage = ""; successMessage = "" },
+                        label = { Text("New Passcode (4+ digits)") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("new_password_input")
+                    )
+
+                    OutlinedTextField(
+                        value = confirmNewPasswordInput,
+                        onValueChange = { confirmNewPasswordInput = it; generalErrorMessage = ""; successMessage = "" },
+                        label = { Text("Confirm New Passcode") },
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("confirm_new_password_input")
+                    )
+
+                    if (successMessage.isNotEmpty()) {
+                        Text(successMessage, color = CyberGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (generalErrorMessage.isNotEmpty()) {
+                        Text(generalErrorMessage, color = Color.Red, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            if (newPasswordInput != confirmNewPasswordInput) {
+                                generalErrorMessage = "New passcodes do not match"
+                                return@Button
+                            }
+                            viewModel.changeBmsPassword(oldPasswordInput, newPasswordInput) { success, msg ->
+                                if (success) {
+                                    successMessage = msg
+                                    oldPasswordInput = ""
+                                    newPasswordInput = ""
+                                    confirmNewPasswordInput = ""
+                                } else {
+                                    generalErrorMessage = msg
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4259A7),
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("update_password_button")
+                    ) {
+                        Text("Update Security Passcode", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1696,3 +1913,129 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
         }
     }
 }
+
+@Composable
+fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
+    var passwordInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F1016)) // Dark cyber background
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E202C)),
+            shape = RoundedCornerShape(28.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(12.dp, RoundedCornerShape(28.dp))
+                .border(1.dp, Color(0xFF3B3F58), RoundedCornerShape(28.dp))
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Secure Glowing Shield/Lock Icon
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color(0xFFE22134).copy(alpha = 0.1f), CircleShape)
+                        .border(1.dp, Color(0xFFE22134), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "BMS Locked",
+                        tint = Color(0xFFE22134),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+
+                Text(
+                    text = "BMS SECURITY HANDSHAKE",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    letterSpacing = 1.2.sp
+                )
+
+                Text(
+                    text = "This battery pack's communication channel is encrypted. Enter the connection passcode to authenticate and enable cell telemetry.",
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    color = Color(0xFF9EA3BA),
+                    lineHeight = 18.sp
+                )
+
+                OutlinedTextField(
+                    value = passwordInput,
+                    onValueChange = {
+                        passwordInput = it
+                        errorMessage = ""
+                    },
+                    label = { Text("BMS Passcode", color = Color(0xFF9EA3BA)) },
+                    placeholder = { Text("Default: 123456", color = Color(0xFF9EA3BA).copy(alpha = 0.5f)) },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF4259A7),
+                        unfocusedBorderColor = Color(0xFF3B3F58),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = Color(0xFF4259A7)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("bms_passcode_input")
+                )
+
+                if (errorMessage.isNotEmpty()) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFE22134),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        keyboardController?.hide()
+                        viewModel.authorizeBms(passwordInput) { success ->
+                            if (!success) {
+                                errorMessage = "Invalid password. Access Denied."
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4259A7),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("bms_authorize_button")
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.VpnKey, contentDescription = "Decrypt")
+                        Text("Decrypt Telemetry", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+    }
+}
+

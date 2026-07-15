@@ -57,7 +57,9 @@ data class BmsTelemetry(
     val dischargeSwitchOn: Boolean = true,
     val activeAlerts: List<String> = emptyList(),
     val isCharging: Boolean = false,
-    val isDischarging: Boolean = false
+    val isDischarging: Boolean = false,
+    val isEncrypted: Boolean = false,
+    val isAuthorized: Boolean = true
 )
 
 class BmsBluetoothManager(
@@ -72,6 +74,58 @@ class BmsBluetoothManager(
 
     private val _telemetry = MutableStateFlow(BmsTelemetry())
     val telemetry: StateFlow<BmsTelemetry> = _telemetry.asStateFlow()
+
+    private var isSessionAuthorized = true
+
+    fun lockBms() {
+        isSessionAuthorized = false
+        updateTelemetry(_telemetry.value)
+    }
+
+    fun unlockBms() {
+        isSessionAuthorized = true
+        updateTelemetry(_telemetry.value)
+    }
+
+    suspend fun authorizeBms(password: String): Boolean {
+        val settings = repository.getSettings()
+        if (!settings.isBmsEncrypted || password == settings.bmsPassword) {
+            isSessionAuthorized = true
+            updateTelemetry(_telemetry.value)
+            return true
+        }
+        return false
+    }
+
+    private fun updateTelemetry(rawTelemetry: BmsTelemetry) {
+        scope.launch {
+            val settings = repository.getSettings()
+            val isEncrypted = settings.isBmsEncrypted
+            val isAuthorized = !isEncrypted || isSessionAuthorized
+
+            val finalTelemetry = if (!isAuthorized && rawTelemetry.connectionState == BmsConnectionState.CONNECTED) {
+                rawTelemetry.copy(
+                    totalVoltage = 0f,
+                    current = 0f,
+                    soc = 0f,
+                    capacityAh = 0f,
+                    temperatures = emptyList(),
+                    cellVoltages = emptyList(),
+                    cellBalancing = emptyList(),
+                    isCharging = false,
+                    isDischarging = false,
+                    isEncrypted = isEncrypted,
+                    isAuthorized = false
+                )
+            } else {
+                rawTelemetry.copy(
+                    isEncrypted = isEncrypted,
+                    isAuthorized = isAuthorized
+                )
+            }
+            _telemetry.value = finalTelemetry
+        }
+    }
 
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
     private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager?.adapter
@@ -292,6 +346,7 @@ class BmsBluetoothManager(
     @SuppressLint("MissingPermission")
     fun connectDevice(address: String) {
         stopScanning()
+        isSessionAuthorized = false
         _connectionState.value = BmsConnectionState.CONNECTING
 
         if (address == "00:11:22:33:44:FF") {
@@ -388,7 +443,7 @@ class BmsBluetoothManager(
                 disconnectGatt()
                 scope.launch(Dispatchers.Main) {
                     _connectionState.value = BmsConnectionState.DISCONNECTED
-                    _telemetry.value = BmsTelemetry(connectionState = BmsConnectionState.DISCONNECTED)
+                    updateTelemetry(BmsTelemetry(connectionState = BmsConnectionState.DISCONNECTED))
                 }
             }
         }
@@ -710,7 +765,7 @@ class BmsBluetoothManager(
             val devAddress = bluetoothGatt?.device?.address ?: ""
             val devName = bluetoothGatt?.device?.name ?: "JBD BMS"
 
-            _telemetry.value = BmsTelemetry(
+            updateTelemetry(BmsTelemetry(
                 connectionState = BmsConnectionState.CONNECTED,
                 connectedDeviceName = devName,
                 connectedDeviceAddress = devAddress,
@@ -726,7 +781,7 @@ class BmsBluetoothManager(
                 activeAlerts = activeAlerts,
                 isCharging = current > 0.1f,
                 isDischarging = current < -0.1f
-            )
+            ))
         } else if (cmd == 0x04.toByte()) {
             val cellCount = data.size / 2
             val cellVList = mutableListOf<Float>()
@@ -737,9 +792,9 @@ class BmsBluetoothManager(
             jbdCellVoltages = cellVList
 
             val currentTel = _telemetry.value
-            _telemetry.value = currentTel.copy(
+            updateTelemetry(currentTel.copy(
                 cellVoltages = cellVList.toList()
-            )
+            ))
         }
     }
 
@@ -857,7 +912,7 @@ class BmsBluetoothManager(
         if (minTemp <= 0f) activeAlerts.add("Daly BMS: Low Temp Lock ($minTemp°C)")
         if (kotlin.math.abs(dalyCurr) >= 80f) activeAlerts.add("Daly BMS: Over Current Trip")
 
-        _telemetry.value = BmsTelemetry(
+        updateTelemetry(BmsTelemetry(
             connectionState = BmsConnectionState.CONNECTED,
             connectedDeviceName = devName,
             connectedDeviceAddress = devAddress,
@@ -873,7 +928,7 @@ class BmsBluetoothManager(
             activeAlerts = activeAlerts,
             isCharging = dalyCurr > 0.1f,
             isDischarging = dalyCurr < -0.1f
-        )
+        ))
     }
 
     private fun parseGenericBytes(bytes: ByteArray) {
@@ -882,7 +937,7 @@ class BmsBluetoothManager(
             val rawCurr = (((bytes[2].toInt() and 0xFF) shl 8) or (bytes[3].toInt() and 0xFF)).toShort().toFloat() / 100f
             val soc = bytes[4].toInt() and 0xFF
 
-            _telemetry.value = BmsTelemetry(
+            updateTelemetry(BmsTelemetry(
                 connectionState = BmsConnectionState.CONNECTED,
                 connectedDeviceName = bluetoothGatt?.device?.name ?: "Generic BMS",
                 connectedDeviceAddress = bluetoothGatt?.device?.address ?: "",
@@ -897,7 +952,7 @@ class BmsBluetoothManager(
                 dischargeSwitchOn = true,
                 isCharging = rawCurr > 0.1f,
                 isDischarging = rawCurr < -0.1f
-            )
+            ))
         }
     }
 
@@ -921,7 +976,7 @@ class BmsBluetoothManager(
         dbLoggingJob?.cancel()
         disconnectGatt()
         _connectionState.value = BmsConnectionState.DISCONNECTED
-        _telemetry.value = BmsTelemetry(connectionState = BmsConnectionState.DISCONNECTED)
+        updateTelemetry(BmsTelemetry(connectionState = BmsConnectionState.DISCONNECTED))
     }
 
     // Set simulator environmental factors
@@ -1041,7 +1096,7 @@ class BmsBluetoothManager(
                     alerts.add("Cell Imbalance Threat (Δ ${String.format("%.3f", maxCell - minCell)}V)")
                 }
 
-                _telemetry.value = BmsTelemetry(
+                updateTelemetry(BmsTelemetry(
                     connectionState = BmsConnectionState.CONNECTED,
                     connectedDeviceName = deviceName,
                     connectedDeviceAddress = deviceAddress,
@@ -1057,7 +1112,7 @@ class BmsBluetoothManager(
                     activeAlerts = alerts,
                     isCharging = current > 0.1f,
                     isDischarging = current < -0.1f
-                )
+                ))
 
                 delay(1000)
             }

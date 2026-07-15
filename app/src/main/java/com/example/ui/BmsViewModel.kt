@@ -164,6 +164,49 @@ class BmsViewModel(application: Application) : AndroidViewModel(application) {
             repository.clearHistory()
         }
     }
+
+    // --- BMS Security & Encryption Controls ---
+
+    fun changeBmsPassword(oldPass: String, newPass: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val settings = repository.getSettings()
+            if (settings.bmsPassword == oldPass) {
+                if (newPass.length < 4) {
+                    onResult(false, "Password must be at least 4 characters")
+                    return@launch
+                }
+                repository.updateSettings(settings.copy(bmsPassword = newPass))
+                onResult(true, "Password successfully updated!")
+            } else {
+                onResult(false, "Current password is incorrect")
+            }
+        }
+    }
+
+    fun toggleBmsEncryption(enabled: Boolean, passwordToConfirm: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val settings = repository.getSettings()
+            if (settings.bmsPassword == passwordToConfirm) {
+                repository.updateSettings(settings.copy(isBmsEncrypted = enabled))
+                if (enabled) {
+                    bluetoothManager.lockBms()
+                    onResult(true, "BMS Encryption Activated! Secure handshake required.")
+                } else {
+                    bluetoothManager.unlockBms()
+                    onResult(true, "BMS Encryption Deactivated. Connection is unencrypted.")
+                }
+            } else {
+                onResult(false, "Incorrect security password confirmation")
+            }
+        }
+    }
+
+    fun authorizeBms(password: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val authorized = bluetoothManager.authorizeBms(password)
+            onResult(authorized)
+        }
+    }
 }
 
 class BmsViewModelFactory(private val application: Application) : ViewModelProvider.Factory {
