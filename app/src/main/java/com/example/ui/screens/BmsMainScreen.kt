@@ -13,6 +13,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.RotateLeft
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,8 +28,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -36,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
 import com.example.bluetooth.BmsConnectionState
 import com.example.bluetooth.BmsTelemetry
 import com.example.bluetooth.ScanDevice
@@ -58,6 +66,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
     val historyLogs by viewModel.historyLogs.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableStateOf(0) }
+    var showDeveloperPage by remember { mutableStateOf(false) }
 
     val statusText = when (connectionState) {
         BmsConnectionState.DISCONNECTED -> "Offline"
@@ -73,7 +82,10 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
         BmsConnectionState.CONNECTED -> CyberGreen
     }
 
-    Scaffold(
+    if (showDeveloperPage) {
+        BmsDeveloperProfileScreen(onBack = { showDeveloperPage = false })
+    } else {
+        Scaffold(
         topBar = {
             TopAppBar(
                 title = {
@@ -125,6 +137,17 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                         Icon(
                             imageVector = themeIcon,
                             contentDescription = nextModeLabel,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { showDeveloperPage = true },
+                        modifier = Modifier.testTag("developer_profile_top_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "About Developer",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -237,12 +260,12 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                     0 -> BmsDashboardTab(telemetry, settingsState, viewModel)
                     1 -> BmsCellsTab(telemetry, settingsState)
                     2 -> BmsBluetoothTab(connectionState, scannedDevices, viewModel)
-                    3 -> BmsSetupTab(settingsState, viewModel)
+                    3 -> BmsSetupTab(settingsState, viewModel, onDeveloperClick = { showDeveloperPage = true })
                     4 -> BmsAnalyticsTab(historyLogs, viewModel)
                 }
             }
         }
-    }
+    } }
 }
 
 // -------------------------------------------------------------
@@ -988,7 +1011,7 @@ fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
 
                             if (isBalancing) {
                                 Icon(
-                                    imageVector = Icons.Default.RotateLeft,
+                                    imageVector = Icons.AutoMirrored.Filled.RotateLeft,
                                     contentDescription = "Active Balancing",
                                     tint = CyberOrange,
                                     modifier = Modifier
@@ -1323,7 +1346,11 @@ fun BmsBluetoothTab(
 // TAB 3: SETUP, CALIBRATION & CHEMISTRY
 // -------------------------------------------------------------
 @Composable
-fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
+fun BmsSetupTab(
+    settings: BatterySettings?,
+    viewModel: BmsViewModel,
+    onDeveloperClick: () -> Unit
+) {
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val currentChemistry = settings?.chemistry ?: "LiFePO4"
@@ -1801,6 +1828,70 @@ fun BmsSetupTab(settings: BatterySettings?, viewModel: BmsViewModel) {
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // --- DEVELOPER BRANDING ACCESS CARD ---
+        Text(
+            text = "DEVELOPER PROFILE",
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp
+            )
+        )
+
+        Card(
+            onClick = onDeveloperClick,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
+                .testTag("developer_profile_card_button")
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Terminal,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "AXYAN LABS",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                    Text(
+                        text = "OpenBMS Utility • Version 1.0.1",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "View Profile",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
@@ -2088,6 +2179,330 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                         Text("Decrypt Telemetry", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     }
                 }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
+// DEDICATED PAGE: DEVELOPER DETAILS & PROFILE
+// -------------------------------------------------------------
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+    val appVersion = BuildConfig.VERSION_NAME
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "DEVELOPER PROFILE",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                            color = Color.White
+                        )
+                    )
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.testTag("developer_profile_back")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF070B19)
+                )
+            )
+        },
+        containerColor = Color(0xFF070B19)
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(Color(0xFF070B19))
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(32.dp)
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Beautiful AXYAN LABS Original SVG Canvas Logo!
+            Box(
+                modifier = Modifier
+                    .size(140.dp)
+                    .background(Color(0xFF0F172A), RoundedCornerShape(24.dp)) // Slate-900
+                    .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(24.dp)), // Slate-800
+                contentAlignment = Alignment.Center
+            ) {
+                // Pulsing neon backing halo
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(2.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF10B981).copy(alpha = 0.12f),
+                                    Color.Transparent
+                                )
+                            ),
+                            shape = RoundedCornerShape(24.dp)
+                        )
+                        .border(1.dp, Color(0xFF10B981).copy(alpha = 0.25f), RoundedCornerShape(24.dp))
+                )
+
+                Canvas(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .testTag("axyan_labs_logo_canvas")
+                ) {
+                    val scale = size.width / 24f
+
+                    // Linear Gradient from top-left (0%, 0%) to bottom-right (100%, 100%)
+                    val axGradLoader = Brush.linearGradient(
+                        colorStops = arrayOf(
+                            0.0f to Color(0xFF10B981), // Emerald
+                            0.5f to Color(0xFF06B6D4), // Cyan
+                            1.0f to Color(0xFF4F46E5)  // Indigo
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(size.width, size.height)
+                    )
+
+                    // 1. Path 1: Arch 'A' (M4 19L11 5C11.3 4.4 12.7 4.4 13 5L20 19)
+                    val archPath = Path().apply {
+                        moveTo(4f * scale, 19f * scale)
+                        lineTo(11f * scale, 5f * scale)
+                        cubicTo(
+                            x1 = 11.3f * scale, y1 = 4.4f * scale,
+                            x2 = 12.7f * scale, y2 = 4.4f * scale,
+                            x3 = 13f * scale, y3 = 5f * scale
+                        )
+                        lineTo(20f * scale, 19f * scale)
+                    }
+                    drawPath(
+                        path = archPath,
+                        brush = axGradLoader,
+                        style = Stroke(
+                            width = 2.5f * scale,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+
+                    // 2. Path 2: Horizontal crossbar (M6 14.5H18)
+                    val crossbarPath = Path().apply {
+                        moveTo(6f * scale, 14.5f * scale)
+                        lineTo(18f * scale, 14.5f * scale)
+                    }
+                    drawPath(
+                        path = crossbarPath,
+                        brush = axGradLoader,
+                        style = Stroke(
+                            width = 2.5f * scale,
+                            cap = StrokeCap.Round
+                        )
+                    )
+
+                    // 3. Path 3: Inner diagonal / cross slash (M15.5 10L8.5 17)
+                    val diagonalPath = Path().apply {
+                        moveTo(15.5f * scale, 10f * scale)
+                        lineTo(8.5f * scale, 17f * scale)
+                    }
+                    drawPath(
+                        path = diagonalPath,
+                        brush = axGradLoader,
+                        style = Stroke(
+                            width = 2f * scale,
+                            cap = StrokeCap.Round
+                        )
+                    )
+                }
+            }
+
+            // Developer identity branding text matching image
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "AXYAN LABS",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        letterSpacing = 4.sp
+                    )
+                )
+                Text(
+                    text = "D  E  V  _  U  X  _  L  A  B   ✦",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00B0FF),
+                        letterSpacing = 2.sp
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Premium cards for contacts and websites
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Official Website Link Button
+                Card(
+                    onClick = {
+                        try {
+                            uriHandler.openUri("https://www.axyanlabs.qzz.io")
+                        } catch (e: Exception) {
+                            // Safe guard
+                        }
+                    },
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131A35)),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFF00B0FF).copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                        .testTag("visit_website_card")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(Color(0xFF00B0FF).copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Language,
+                                contentDescription = null,
+                                tint = Color(0xFF00B0FF)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Official Website",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Text(
+                                text = "www.axyanlabs.qzz.io",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.OpenInNew,
+                            contentDescription = "Open",
+                            tint = Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                // Official Email Button
+                Card(
+                    onClick = {
+                        try {
+                            uriHandler.openUri("mailto:contact@axyanlabs.qzz.io")
+                        } catch (e: Exception) {
+                            // Safe guard
+                        }
+                    },
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131A35)),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, Color(0xFF00B0FF).copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                        .testTag("send_email_card")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(Color(0xFFFF9100).copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                tint = Color(0xFFFF9100)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Contact Email",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Text(
+                                text = "contact@axyanlabs.qzz.io",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.OpenInNew,
+                            contentDescription = "Open",
+                            tint = Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Minimalist version & platform footer
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "OpenBMS Utility • Version $appVersion",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+                Text(
+                    text = "Next-Generation Battery Intelligence Ecosystem",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = Color.White.copy(alpha = 0.4f),
+                        letterSpacing = 0.5.sp
+                    )
+                )
             }
         }
     }

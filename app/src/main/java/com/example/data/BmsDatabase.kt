@@ -24,7 +24,7 @@ abstract class BmsDatabase : RoomDatabase() {
                     BmsDatabase::class.java,
                     "bms_database"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(true)
                 .build()
                 INSTANCE = instance
                 instance

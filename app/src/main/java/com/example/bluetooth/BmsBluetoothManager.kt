@@ -62,6 +62,7 @@ data class BmsTelemetry(
     val isAuthorized: Boolean = true
 )
 
+@Suppress("DEPRECATION")
 class BmsBluetoothManager(
     private val context: Context,
     private val repository: BmsRepository
@@ -639,6 +640,7 @@ class BmsBluetoothManager(
         return frame
     }
 
+    @SuppressLint("MissingPermission")
     private fun parseJbdBytes(bytes: ByteArray) {
         for (b in bytes) {
             jbdBuffer.add(b)
@@ -699,6 +701,7 @@ class BmsBluetoothManager(
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun processJbdRegister(cmd: Byte, data: ByteArray) {
         if (cmd == 0x03.toByte()) {
             if (data.size < 20) return
@@ -895,6 +898,7 @@ class BmsBluetoothManager(
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun updateDalyTelemetry() {
         val devAddress = bluetoothGatt?.device?.address ?: ""
         val devName = bluetoothGatt?.device?.name ?: "Daly BMS"
@@ -931,6 +935,7 @@ class BmsBluetoothManager(
         ))
     }
 
+    @SuppressLint("MissingPermission")
     private fun parseGenericBytes(bytes: ByteArray) {
         if (bytes.size >= 6) {
             val totalVolt = (((bytes[0].toInt() and 0xFF) shl 8) or (bytes[1].toInt() and 0xFF)) / 100f
