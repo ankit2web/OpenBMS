@@ -77,12 +77,7 @@ fun BmsTelemetryChart(
         ChartMetric.TEMPERATURE -> "°C"
     }
 
-    val chartColor = when (metric) {
-        ChartMetric.SOC -> CyberBlue
-        ChartMetric.VOLTAGE -> CyberGreen
-        ChartMetric.CURRENT -> CyberOrange
-        ChartMetric.TEMPERATURE -> Color(0xFFFF1744)
-    }
+    val chartColor = MaterialTheme.colorScheme.primary
 
     // Extract values
     val values = sortedLogs.map { log ->

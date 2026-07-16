@@ -40,10 +40,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.BuildConfig
+import com.axyanlabs.openbms.manager.BuildConfig
 import com.example.bluetooth.BmsConnectionState
 import com.example.bluetooth.BmsTelemetry
 import com.example.bluetooth.ScanDevice
@@ -70,6 +71,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
 
     val activityContext = androidx.compose.ui.platform.LocalContext.current
     var showExitDialog by remember { mutableStateOf(false) }
+    var showDisconnectConfirmation by remember { mutableStateOf(false) }
 
     // Intercept back button for developer screen
     androidx.activity.compose.BackHandler(enabled = showDeveloperPage) {
@@ -96,7 +98,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
     }
 
     if (showDeveloperPage) {
-        BmsDeveloperProfileScreen(onBack = { showDeveloperPage = false })
+        BmsDeveloperProfileScreen(viewModel = viewModel, onBack = { showDeveloperPage = false })
     } else {
         Scaffold(
         topBar = {
@@ -166,7 +168,7 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                     }
 
                     if (connectionState == BmsConnectionState.CONNECTED) {
-                        IconButton(onClick = { viewModel.disconnect() }) {
+                        IconButton(onClick = { showDisconnectConfirmation = true }) {
                             Icon(
                                 imageVector = Icons.Default.PowerSettingsNew,
                                 contentDescription = "Disconnect BMS",
@@ -270,8 +272,8 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
                 BmsPasscodeLockScreen(viewModel)
             } else {
                 when (selectedTab) {
-                    0 -> BmsDashboardTab(telemetry, settingsState, viewModel)
-                    1 -> BmsCellsTab(telemetry, settingsState)
+                    0 -> BmsDashboardTab(telemetry, settingsState, viewModel, onViewLogsClick = { selectedTab = 4 }, onRedirectToConnect = { selectedTab = 2 })
+                    1 -> BmsCellsTab(telemetry, settingsState, onRedirectToConnect = { selectedTab = 2 })
                     2 -> BmsBluetoothTab(connectionState, scannedDevices, viewModel)
                     3 -> BmsSetupTab(settingsState, viewModel, onDeveloperClick = { showDeveloperPage = true })
                     4 -> BmsAnalyticsTab(historyLogs, viewModel)
@@ -324,6 +326,51 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
             }
         )
     }
+
+    if (showDisconnectConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDisconnectConfirmation = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text("Disconnect BMS?", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to disconnect from the current BMS device? Dynamic battery monitoring and analytics logging will stop.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDisconnectConfirmation = false
+                        viewModel.disconnect()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.testTag("disconnect_btn_confirm")
+                ) {
+                    Text("Disconnect")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showDisconnectConfirmation = false },
+                    modifier = Modifier.testTag("disconnect_btn_cancel")
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 // -------------------------------------------------------------
@@ -334,7 +381,8 @@ fun BmsDashboardTab(
     telemetry: BmsTelemetry,
     settings: BatterySettings?,
     viewModel: BmsViewModel,
-    onViewLogsClick: () -> Unit = {}
+    onViewLogsClick: () -> Unit = {},
+    onRedirectToConnect: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
 
@@ -388,32 +436,52 @@ fun BmsDashboardTab(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 40.dp),
+                    .padding(vertical = 40.dp)
+                    .clickable { onRedirectToConnect() },
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.BluetoothDisabled,
-                        contentDescription = "Disconnected",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Text(
-                        text = "BMS Device Disconnected",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Please go to the 'Connect' tab to pair a Bluetooth BMS or run the Demo Simulator.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.BluetoothDisabled,
+                                contentDescription = "Disconnected",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                        Text(
+                            text = "BMS Device Disconnected",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Tap here to go to the 'Connect' tab and pair a Bluetooth BMS or run the Demo Simulator.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
                 }
             }
             return
@@ -886,13 +954,58 @@ fun SystemLogsCard(
 // TAB 1: INDIVIDUAL CELL STATUS
 // -------------------------------------------------------------
 @Composable
-fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?) {
+fun BmsCellsTab(telemetry: BmsTelemetry, settings: BatterySettings?, onRedirectToConnect: () -> Unit = {}) {
     if (telemetry.connectionState != BmsConnectionState.CONNECTED) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .clickable { onRedirectToConnect() },
             contentAlignment = Alignment.Center
         ) {
-            Text("Please connect to a BMS device to view cell status.")
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BluetoothDisabled,
+                            contentDescription = "Disconnected",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Text(
+                        text = "Cell Status Offline",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Tap here to go to the 'Connect' tab and pair a Bluetooth BMS or run the Demo Simulator.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                }
+            }
         }
         return
     }
@@ -1227,6 +1340,7 @@ fun BmsBluetoothTab(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
+                                modifier = Modifier.weight(1.0f),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
@@ -1235,20 +1349,26 @@ fun BmsBluetoothTab(
                                     contentDescription = "Device info",
                                     tint = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
                                 )
-                                Column {
+                                Column(modifier = Modifier.weight(1.0f)) {
                                     Text(
                                         text = dev.name,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                        fontSize = 14.sp
+                                        fontSize = 14.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
                                         text = dev.address,
                                         fontSize = 11.sp,
-                                        color = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isDemo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.width(8.dp))
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -1937,7 +2057,7 @@ fun BmsSetupTab(
                         )
                     )
                     Text(
-                        text = "OpenBMS Utility • Version 1.0.1",
+                        text = "OpenBMS Utility • Version ${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1991,14 +2111,16 @@ fun BmsAnalyticsTab(logs: List<BatteryHistoryLog>, viewModel: BmsViewModel) {
 
             metrics.forEach { (met, label) ->
                 val isSelected = selectedMetric == met
+                val isDark = androidx.compose.foundation.isSystemInDarkTheme()
                 FilterChip(
                     selected = isSelected,
                     onClick = { selectedMetric = met },
                     label = { Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     ),
                     modifier = Modifier.weight(1f)
                 )
@@ -2126,17 +2248,17 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F1016)) // Dark cyber background
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E202C)),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             shape = RoundedCornerShape(28.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(12.dp, RoundedCornerShape(28.dp))
-                .border(1.dp, Color(0xFF3B3F58), RoundedCornerShape(28.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(28.dp))
         ) {
             Column(
                 modifier = Modifier
@@ -2149,14 +2271,14 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                 Box(
                     modifier = Modifier
                         .size(72.dp)
-                        .background(Color(0xFFE22134).copy(alpha = 0.1f), CircleShape)
-                        .border(1.dp, Color(0xFFE22134), CircleShape),
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape)
+                        .border(1.dp, MaterialTheme.colorScheme.error, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Lock,
                         contentDescription = "BMS Locked",
-                        tint = Color(0xFFE22134),
+                        tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -2165,7 +2287,7 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                     text = "BMS SECURITY HANDSHAKE",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     letterSpacing = 1.2.sp
                 )
 
@@ -2173,7 +2295,7 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                     text = "This battery pack's communication channel is encrypted. Enter the connection passcode to authenticate and enable cell telemetry.",
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
-                    color = Color(0xFF9EA3BA),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     lineHeight = 18.sp
                 )
 
@@ -2183,18 +2305,18 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                         passwordInput = it
                         errorMessage = ""
                     },
-                    label = { Text("BMS Passcode", color = Color(0xFF9EA3BA)) },
-                    placeholder = { Text("Default: 123456", color = Color(0xFF9EA3BA).copy(alpha = 0.5f)) },
+                    label = { Text("BMS Passcode", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text("Default: 123456", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF4259A7),
-                        unfocusedBorderColor = Color(0xFF3B3F58),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = Color(0xFF4259A7)
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2205,7 +2327,7 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                     Text(
                         text = errorMessage,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFE22134),
+                        color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -2215,13 +2337,13 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
                         keyboardController?.hide()
                         viewModel.authorizeBms(passwordInput) { success ->
                             if (!success) {
-                                errorMessage = "Invalid password. Access Denied."
+                                  errorMessage = "Invalid password. Access Denied."
                             }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4259A7),
-                        contentColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
@@ -2247,9 +2369,10 @@ fun BmsPasscodeLockScreen(viewModel: BmsViewModel) {
 // -------------------------------------------------------------
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
+fun BmsDeveloperProfileScreen(viewModel: BmsViewModel, onBack: () -> Unit) {
     val uriHandler = LocalUriHandler.current
     val appVersion = BuildConfig.VERSION_NAME
+    val settingsState by viewModel.settingsState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -2260,7 +2383,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.2.sp,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 },
@@ -2272,22 +2395,46 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                actions = {
+                    val currentThemeMode = settingsState?.themeMode ?: "System"
+                    val (themeIcon, nextModeLabel) = when (currentThemeMode) {
+                        "Light" -> Pair(Icons.Default.LightMode, "Switch to Dark")
+                        "Dark" -> Pair(Icons.Default.DarkMode, "Switch to System Auto")
+                        else -> Pair(Icons.Default.BrightnessAuto, "Switch to Light")
+                    }
+                    IconButton(
+                        onClick = {
+                            val nextMode = when (currentThemeMode) {
+                                "System" -> "Light"
+                                "Light" -> "Dark"
+                                else -> "System"
+                            }
+                            viewModel.updateTheme(nextMode)
+                        },
+                        modifier = Modifier.testTag("developer_profile_theme_toggle")
+                    ) {
+                        Icon(
+                            imageVector = themeIcon,
+                            contentDescription = nextModeLabel,
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF070B19)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
-        containerColor = Color(0xFF070B19)
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFF070B19))
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -2295,11 +2442,15 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val secondaryColor = MaterialTheme.colorScheme.secondary
+            val tertiaryColor = MaterialTheme.colorScheme.tertiary
+
             // Beautiful AXYAN LABS Original SVG Canvas Logo!
             Box(
                 modifier = Modifier
                     .size(140.dp)
-                    .background(Color(0xFF0F172A), RoundedCornerShape(24.dp)) // Slate-900
+                    .background(Color(0xFF0F172A), RoundedCornerShape(24.dp)) // Slate-900 for premium branding depth
                     .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(24.dp)), // Slate-800
                 contentAlignment = Alignment.Center
             ) {
@@ -2327,7 +2478,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                 ) {
                     val scale = size.width / 24f
 
-                    // Linear Gradient from top-left (0%, 0%) to bottom-right (100%, 100%)
+                    // Linear Gradient mapping Emerald -> Cyan -> Indigo natively via high-contrast brand colors
                     val axGradLoader = Brush.linearGradient(
                         colorStops = arrayOf(
                             0.0f to Color(0xFF10B981), // Emerald
@@ -2398,7 +2549,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                     text = "AXYAN LABS",
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Black,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onBackground,
                         letterSpacing = 4.sp
                     )
                 )
@@ -2406,7 +2557,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                     text = "D  E  V  _  U  X  _  L  A  B   ✦",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00B0FF),
+                        color = MaterialTheme.colorScheme.secondary,
                         letterSpacing = 2.sp
                     )
                 )
@@ -2428,11 +2579,11 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                             // Safe guard
                         }
                     },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131A35)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0xFF00B0FF).copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
                         .testTag("visit_website_card")
                 ) {
                     Row(
@@ -2445,27 +2596,27 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .background(Color(0xFF00B0FF).copy(alpha = 0.15f), CircleShape),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Language,
                                 contentDescription = null,
-                                tint = Color(0xFF00B0FF)
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Official Website",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     fontWeight = FontWeight.Bold
                                 )
                             )
                             Text(
                                 text = "axyanlabs.qzz.io",
                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             )
@@ -2473,7 +2624,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                         Icon(
                             imageVector = Icons.Default.OpenInNew,
                             contentDescription = "Open",
-                            tint = Color.White.copy(alpha = 0.4f),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -2488,11 +2639,11 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                             // Safe guard
                         }
                     },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131A35)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, Color(0xFF00B0FF).copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
                         .testTag("send_email_card")
                 ) {
                     Row(
@@ -2505,27 +2656,27 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .size(44.dp)
-                                .background(Color(0xFFFF9100).copy(alpha = 0.15f), CircleShape),
+                                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Email,
                                 contentDescription = null,
-                                tint = Color(0xFFFF9100)
+                                tint = MaterialTheme.colorScheme.tertiary
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Contact Email",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color.White.copy(alpha = 0.5f),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     fontWeight = FontWeight.Bold
                                 )
                             )
                             Text(
                                 text = "contact@axyanlabs.qzz.io",
                                 style = MaterialTheme.typography.bodyLarge.copy(
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             )
@@ -2533,7 +2684,69 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                         Icon(
                             imageVector = Icons.Default.OpenInNew,
                             contentDescription = "Open",
-                            tint = Color.White.copy(alpha = 0.4f),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // GitHub Repository Button
+                Card(
+                    onClick = {
+                        try {
+                            uriHandler.openUri("https://github.com/ankit2web/OpenBMS")
+                        } catch (e: Exception) {
+                            // Safe guard
+                        }
+                    },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+                        .testTag("github_repo_card")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Code,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "GitHub Repository",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Text(
+                                text = "ankit2web/OpenBMS",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.OpenInNew,
+                            contentDescription = "Open",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -2550,14 +2763,14 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                 Text(
                     text = "OpenBMS Utility • Version $appVersion",
                     style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         fontWeight = FontWeight.SemiBold
                     )
                 )
                 Text(
                     text = "Next-Generation Battery Intelligence Ecosystem",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = Color.White.copy(alpha = 0.4f),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f),
                         letterSpacing = 0.5.sp
                     )
                 )
