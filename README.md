@@ -110,13 +110,58 @@ The pipeline automates:
 ---
 
 ### 🔑 Setting Up Custom Release Keys (Optional)
-To sign your production-ready release builds with a custom permanent upload key, configure the following secrets under your GitHub Repository's **Settings -> Secrets and variables -> Actions**:
 
-| Secret Name | Description |
+To sign your production-ready release builds with a custom permanent key, you need to create a Java Keystore (`.jks`) file, encode it in Base64, and save it and its credentials in your GitHub repository's secrets.
+
+#### Step 1: Create a Keystore with the Alias `upload`
+Run the following `keytool` command (available in any Java Development Kit / JDK) to generate your keystore.
+> **Note:** The key alias **MUST** be set to `upload` to match the application's build configuration.
+
+```bash
+keytool -genkey -v -keystore my-upload-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
+During generation, you will be prompted to create:
+1. A **keystore password** (used for `STORE_PASSWORD`).
+2. A **key password** for the `upload` alias (used for `KEY_PASSWORD`).
+
+---
+
+#### Step 2: Encode the Keystore File in Base64
+To store your binary `.jks` file inside a GitHub Secret, you must convert it into a flat Base64 text string. Use the appropriate command for your operating system:
+
+##### 🐧 Linux
+```bash
+base64 -w 0 my-upload-key.jks
+```
+
+##### 🍎 macOS
+```bash
+openssl base64 -A -in my-upload-key.jks
+# Or alternatively:
+base64 -i my-upload-key.jks -o - | tr -d '\n'
+```
+
+##### 🪟 Windows (PowerShell)
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("my-upload-key.jks")) | Out-File -FilePath my-upload-key.txt
+```
+*(Open the generated `my-upload-key.txt` file and copy its contents. Ensure there are no spaces or extra line breaks.)*
+
+---
+
+#### Step 3: Configure GitHub Secrets
+Navigate to your repository on GitHub and go to:
+**Settings ➡️ Secrets and variables ➡️ Actions ➡️ Repository secrets** (click **New repository secret**).
+
+Add the following three secrets:
+
+| Secret Name | Value to Provide |
 | :--- | :--- |
-| `KEYSTORE_BASE64` | The entire `.jks` or `.keystore` file encoded in **Base64** format. *(e.g., run `base64 -w 0 my-upload-key.jks` to obtain this)* |
-| `STORE_PASSWORD` | The master keystore password used during creation. |
-| `KEY_PASSWORD` | The alias password for your release key. |
+| `KEYSTORE_BASE64` | The entire Base64 string of your keystore (copied from Step 2). |
+| `STORE_PASSWORD` | The master password of your keystore. |
+| `KEY_PASSWORD` | The key/alias password for the `upload` alias. |
+
+Once configured, the next release build triggered by a version change will automatically decode your keystore, sign the APK, and publish it under the **Releases** tab!
 
 ---
 
