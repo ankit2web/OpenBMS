@@ -68,6 +68,19 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
     var showDeveloperPage by remember { mutableStateOf(false) }
 
+    val activityContext = androidx.compose.ui.platform.LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // Intercept back button for developer screen
+    androidx.activity.compose.BackHandler(enabled = showDeveloperPage) {
+        showDeveloperPage = false
+    }
+
+    // Intercept back button for main screen to show exit dialog
+    androidx.activity.compose.BackHandler(enabled = !showDeveloperPage) {
+        showExitDialog = true
+    }
+
     val statusText = when (connectionState) {
         BmsConnectionState.DISCONNECTED -> "Offline"
         BmsConnectionState.SCANNING -> "Scanning..."
@@ -266,6 +279,51 @@ fun BmsMainScreen(viewModel: BmsViewModel) {
             }
         }
     } }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PowerSettingsNew,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text("Exit OpenBMS?", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to exit the Battery Management System? Any active monitoring session will be disconnected.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        (activityContext as? android.app.Activity)?.finish()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.testTag("exit_btn_confirm")
+                ) {
+                    Text("Exit")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showExitDialog = false },
+                    modifier = Modifier.testTag("exit_btn_cancel")
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 // -------------------------------------------------------------
@@ -2365,7 +2423,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                 Card(
                     onClick = {
                         try {
-                            uriHandler.openUri("https://www.axyanlabs.qzz.io")
+                            uriHandler.openUri("https://axyanlabs.qzz.io")
                         } catch (e: Exception) {
                             // Safe guard
                         }
@@ -2405,7 +2463,7 @@ fun BmsDeveloperProfileScreen(onBack: () -> Unit) {
                                 )
                             )
                             Text(
-                                text = "www.axyanlabs.qzz.io",
+                                text = "axyanlabs.qzz.io",
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = Color.White,
                                     fontWeight = FontWeight.SemiBold
